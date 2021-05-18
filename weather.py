@@ -19,6 +19,10 @@ import datetime
 #
 # file.write(b)
 
+
+
+
+
 with open('lol.json') as f:
   data = json.load(f)
 
@@ -32,11 +36,11 @@ NewData = []
 for i in range(len(data)):
     a = []
     if len(data[i])==7:
-      a.append(data[i]['_id'])
       a.append(data[i]['humidity'])
       a.append(data[i]['pressure'])
       a.append(data[i]['temperature'])
       a.append(data[i]['light'])
+      a.append(data[i]['_id'])
       a.append(data[i]['date'])
       a.append(data[i]['rain'])
       NewData.append(a)
@@ -47,11 +51,10 @@ with open('data.csv', 'w') as f:
     write = csv.writer(f)
     write.writerows(NewData)
 
-def calcul_distance(n_champ,i_champ):
+def calcul_distance(n_releve,i_champ):
     total = 0
-    for i in range(len(n_champ)-2):
-        if (n_champ[i] != i_champ[i]):
-            total += 1
+    for i in range(len(n_releve)-3):
+        total += abs(m.pow(n_releve[i],2)-m.pow(i_champ[i],2))
     return m.sqrt(total)
 
 def prediction_file(data):
@@ -84,9 +87,24 @@ def prediction(list_r_or_v):
     else :
         print("Rainy(p: "+str(ra)+",e: "+str(cl)+")")
 
+#Code appartenant a Swan Sauvegrain
+def a_plu(indiv, bdd):
+    """Retourne True si de la pluie a été enregistrée dans l'heure suivant
+    le relevé indiv et False sinon.
+    """
+    date_indiv = indiv[5]
+    date_fin = date_indiv + datetime.timedelta(hours=1)
+    for releve in bdd:
+        date_releve = releve[5]
+        if date_releve >= date_indiv:
+            if date_releve < date_fin:
+                if releve[6] > 0:
+                    return True
+    return False
+
 #return 0 si clear, 1 sinon
-def return_c_or_r(num,list_champ):
-    return list_champ[num][6]!=0
+def return_c_or_r(num,list_releve):
+    return a_plu(list_releve[num],list_releve)
 
 #retourne l'inverse
 def inverse(distance):
@@ -94,62 +112,22 @@ def inverse(distance):
         return 0
     return 1/distance
 
-#n_champ : champignon a tester
-#d_champ : liste de champignon
+
+#n_releve : champignon a tester
+#data_releve : liste de champignon
 #N = N
 #Show = affiche l'information ou non
-def KNN(n_champ,d_champ,N,show):
+def KNN(n_releve,data_releve,N,show):
     list_dist=[]
     list_k=[]
-    for i in range(len(d_champ)):
-        list_dist.append([calcul_distance(n_champ,d_champ[i]),i])
+    for i in range(len(data_releve)):
+        list_dist.append([calcul_distance(n_releve,data_releve[i]),i])
     list_dist.sort()
     list_comestibility =[]
     for i in range(N):
         if(show):
-            print("Voisin n°"+str(list_dist[i][1])+" distance :"+str(list_dist[i][0])+" classe:"+str(return_c_or_r(list_dist[i][1],d_champ)))
-        list_comestibility.append(return_c_or_r(list_dist[i][1],d_champ))
+            print("Voisin n°"+str(list_dist[i][1])+" distance :"+str(list_dist[i][0])+" classe:"+str(return_c_or_r(list_dist[i][1],data_releve)))
+        list_comestibility.append(return_c_or_r(list_dist[i][1],data_releve))
 
-    #calcul total pondéré
-    tpe = 0
-    tpp = 0
-    for i in range(N):
-        a=return_c_or_r(list_dist[i][1],d_champ)
-        if(a=="e"):
-            tpe = inverse(list_dist[i][0])
-        else:
-            tpp = inverse(list_dist[i][0])
-
-    if(show):
-        prediction(list_comestibility)
-        print("total pondere edible="+str(tpe))
-        print("total pondere poisonous="+str(tpe))
-    return [list_comestibility,[tpe,tpp]]
-
-#Permet de calculer 1NN
-def unNN(n_champ,d_champ,show):
-    return KNN(n_champ,d_champ,1,show)
-
-#input = date
-#output = date dans une heure
-def date_plus_hour(wDate):
-    return wDate+datetime.timedelta(hours=1)
-
-# renvoie la difference de temps absolue entre deux date
-def difference_date(wDate1,wDate2):
-
-    return datetime.timedelta(seconds=abs(wDate1-wDate2).total_seconds())
-
-# wDate=  date de la donnée
-# d_champ = donnée d'apprentissage
-# return : une des données au plus proche d'une heure après wDate
-def find_data_in_an_hour(wDate,d_champ):
-    aMax = difference_date(wDate,d_champ[0][5])
-    index =None
-    for i in range(len(d_champ)):
-        if(difference_date(wDate,d_champ[i][5])<aMin):
-            aMax = difference_date(wDate,d_champ[i][5])
-            index=i
-    print(index)
-    return d_champ[i]
+    return [list_comestibility]
 
